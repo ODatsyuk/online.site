@@ -186,21 +186,15 @@ function addHistory(result, win) {
     document.getElementById('history').prepend(li);
 }
 
-function play() {
-    var bet = parseInt(document.getElementById('bet').value);
-
-    if (!bet || bet <= 0 || bet > balance || selectedBets.length === 0) {
-        document.getElementById('result').innerText = 'Помилка';
-        return;
+function autoPlay() {
+    if (selectedBets.length === 0) {
+        selectedBets = [Math.floor(Math.random() * 36) + 1];
+        document.getElementById('selected').innerText = selectedBets.join(', ');
     }
 
-    currentBet = bet;
+    document.getElementById('bet').value = 10;
 
-    document.getElementById('spinSound').play();
-
-    document.getElementById('result').innerText = 'Очікування результату...';
-
-    socket.send('spin');
+    play();
 }
 
 function showResult(result) {
@@ -240,6 +234,10 @@ function showResult(result) {
 
 document.getElementById('balance').innerText = balance;
 createBoard();
+
+setInterval(function() {
+    autoPlay();
+}, 30000);
 </script>
 
 </body>
