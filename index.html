@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Рулетка 888 ONLINE</title>
+
+<style>
+body {
+    background: 
+        linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+        url('https://tourdnepr.com/images/stories/news_2025/november/03_ruletka_02.jpg');
+    background-size: cover;
+    background-position: center;
+    color: white;
+    display: flex;
+    font-family: Arial;
+}
+
+#left {
+    width: 30%;
+    padding: 10px;
+}
+
+#right {
+    width: 70%;
+    text-align: center;
+}
+
+h1 {
+    color: gold;
+    text-shadow: 0 0 10px gold, 0 0 20px orange;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(12, 60px);
+    gap: 2px;
+    justify-content: center;
+}
+
+.cell {
+    width: 60px;
+    height: 60px;
+    border: 1px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.red { background: red; }
+.black { background: black; }
+.green { background: green; }
+
+.bet { outline: 3px solid yellow; }
+
+.special {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+}
+
+.special .cell {
+    width: 90px;
+    height: 40px;
+}
+
+#signature {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    font-size: 12px;
+}
+</style>
+
+</head>
+<body>
+
+<div id="left">
+<h2>Історія</h2>
+<ul id="history"></ul>
+</div>
+
+<div id="right">
+
+<h1>Рулетка 888 ONLINE</h1>
+
+<p>Баланс: <span id="balance"></span></p>
+<p>Ставки: <span id="selected"></span></p>
+
+<input type="number" id="bet" placeholder="Сума">
+<br><br>
+
+<div id="board" class="board"></div>
+<div class="special" id="special"></div>
+
+<br>
+<button onclick="play()">Грати</button>
+
+<p id="result"></p>
+
+</div>
+
+<audio id="spinSound" src="https://www.soundjay.com/casino/roulette-wheel-1.mp3"></audio>
+
+<div id="signature">
+Made Oleg Datsyuk with Chat GPT and Gemini
+</div>
+
+<script>
+var socket = new WebSocket("wss://online-site-yyx6.onrender.com");
+
+var balance = localStorage.getItem('balance') 
+    ? parseInt(localStorage.getItem('balance')) 
+    : 10000;
+
+var selectedBets = [];
+var currentBet = 0;
+
+socket.onmessage = function(event) {
+    showResult(parseInt(event.data));
+};
+
+function getColor(n) {
+    if (n === 0) return 'green';
+    return n % 2 === 1 ? 'red' : 'black';
+}
+
+function createBoard() {
+    var board = document.getElementById('board');
+
+    var zero = document.createElement('div');
+    zero.className = 'cell green';
+    zero.innerText = '0';
+    zero.onclick = function () { pick(0, zero); };
+    board.parentNode.insertBefore(zero, board);
+
+    for (var i = 1; i <= 36; i++) {
+        var cell = document.createElement('div');
+        cell.className = 'cell ' + getColor(i);
+        cell.innerText = i;
+
+        cell.onclick = (function(n, el){
+            return function() { pick(n, el); }
+        })(i, cell);
+
+        board.appendChild(cell);
+    }
+
+    createSpecial();
+}
+
+function createSpecial() {
+    var special = document.getElementById('special');
+
+    var zones = ['1-18','EVEN','RED','BLACK','ODD','19-36','1st12','2nd12','3rd12'];
+
+    zones.forEach(function(z){
+        var el = document.createElement('div');
+        el.className = 'cell';
+        el.innerText = z;
+        el.onclick = function(){ pick(z, el); };
+        special.appendChild(el);
+    });
+}
+
+function pick(value, el) {
+    if (selectedBets.length >= 3 && !selectedBets.includes(value)) return;
+
+    if (selectedBets.includes(value)) {
+        selectedBets = selectedBets.filter(v => v !== value);
+        el.classList.remove('bet');
+    } else {
+        selectedBets.push(value);
+        el.classList.add('bet');
+    }
+
+    document.getElementById('selected').innerText = selectedBets.join(', ');
+}
+
+function addHistory(result, win) {
+    var li = document.createElement('li');
+    li.innerText = 'Випало: ' + result + ' | ' + (win > 0 ? 'Виграш +' + win : 'Програш');
+    document.getElementById('history').prepend(li);
+}
+
+function play() {
+    var bet = parseInt(document.getElementById('bet').value);
+
+    if (!bet || bet <= 0 || bet > balance || selectedBets.length === 0) {
+        document.getElementById('result').innerText = 'Помилка';
+        return;
+    }
+
+    currentBet = bet;
+
+    document.getElementById('spinSound').play();
+
+    document.getElementById('result').innerText = 'Очікування результату...';
+
+    socket.send('spin');
+}
+
+function showResult(result) {
+    var win = 0;
+
+    selectedBets.forEach(function(b){
+        if (typeof b === 'number' && b === result) win += currentBet * 35;
+
+        if (b === 'RED' && result % 2 === 1 && result !== 0) win += currentBet * 2;
+        if (b === 'BLACK' && result % 2 === 0 && result !== 0) win += currentBet * 2;
+        if (b === 'EVEN' && result % 2 === 0 && result !== 0) win += currentBet * 2;
+        if (b === 'ODD' && result % 2 === 1) win += currentBet * 2;
+        if (b === '1-18' && result >= 1 && result <= 18) win += currentBet * 2;
+        if (b === '19-36' && result >= 19) win += currentBet * 2;
+
+        if (b === '1st12' && result <= 12) win += currentBet * 3;
+        if (b === '2nd12' && result >= 13 && result <= 24) win += currentBet * 3;
+        if (b === '3rd12' && result >= 25) win += currentBet * 3;
+    });
+
+    if (win > 0) {
+        balance += win - currentBet;
+        document.body.style.boxShadow = '0 0 50px green';
+    } else {
+        balance -= currentBet;
+        document.body.style.boxShadow = '0 0 50px red';
+    }
+
+    localStorage.setItem('balance', balance);
+
+    document.getElementById('balance').innerText = balance;
+    document.getElementById('result').innerText =
+        'Випало: ' + result + (win ? ' Виграш' : ' Програш');
+
+    addHistory(result, win);
+}
+
+document.getElementById('balance').innerText = balance;
+createBoard();
+</script>
+
+</body>
+</html>
