@@ -16,15 +16,8 @@ body {
     font-family: Arial;
 }
 
-#left {
-    width: 30%;
-    padding: 10px;
-}
-
-#right {
-    width: 70%;
-    text-align: center;
-}
+#left { width: 30%; padding: 10px; }
+#right { width: 70%; text-align: center; }
 
 h1 {
     color: gold;
@@ -84,7 +77,6 @@ h1 {
 </div>
 
 <div id="right">
-
 <h1>Рулетка 888 ONLINE</h1>
 
 <p>Баланс: <span id="balance"></span></p>
@@ -100,7 +92,6 @@ h1 {
 <button onclick="play()">Грати</button>
 
 <p id="result"></p>
-
 </div>
 
 <audio id="spinSound" src="https://www.soundjay.com/casino/roulette-wheel-1.mp3"></audio>
@@ -110,7 +101,30 @@ Made Oleg Datsyuk with Chat GPT and Gemini
 </div>
 
 <script>
-var socket = new WebSocket("wss://online-site-yyx6.onrender.com");
+var socket;
+
+function connect() {
+    socket = new WebSocket("wss://online-site-yyx6.onrender.com");
+
+    socket.onopen = function() {
+        document.getElementById('result').innerText = 'Підключено ✅';
+    };
+
+    socket.onmessage = function(event) {
+        showResult(parseInt(event.data));
+    };
+
+    socket.onclose = function() {
+        document.getElementById('result').innerText = 'Перепідключення...';
+        setTimeout(connect, 2000);
+    };
+
+    socket.onerror = function() {
+        socket.close();
+    };
+}
+
+connect();
 
 var balance = localStorage.getItem('balance') 
     ? parseInt(localStorage.getItem('balance')) 
@@ -119,14 +133,6 @@ var balance = localStorage.getItem('balance')
 var selectedBets = [];
 var currentBet = 0;
 var timer = 20;
-
-socket.onopen = function() {
-    document.getElementById('result').innerText = 'Підключено ✅';
-};
-
-socket.onmessage = function(event) {
-    showResult(parseInt(event.data));
-};
 
 function getColor(n) {
     if (n === 0) return 'green';
@@ -173,11 +179,8 @@ function createSpecial() {
 
 function pick(value, el) {
     selectedBets = [value];
-
     document.querySelectorAll('.bet').forEach(e => e.classList.remove('bet'));
-
     el.classList.add('bet');
-
     document.getElementById('selected').innerText = value;
 }
 
@@ -188,7 +191,7 @@ function addHistory(result, win) {
 }
 
 function play() {
-    if (socket.readyState !== 1) {
+    if (!socket || socket.readyState !== 1) {
         document.getElementById('result').innerText = 'Немає зʼєднання...';
         return;
     }
@@ -214,7 +217,6 @@ function play() {
 
 function showResult(result) {
     var win = 0;
-
     var b = selectedBets[0];
 
     if (typeof b === 'number' && b === result) win += currentBet * 35;
