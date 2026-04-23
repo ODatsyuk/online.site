@@ -89,12 +89,9 @@ h1 {
 <div class="special" id="special"></div>
 
 <br>
-<button onclick="play()">Грати</button>
 
-<p id="result"></p>
+<p id="result">Підключення...</p>
 </div>
-
-<audio id="spinSound" src="https://www.soundjay.com/casino/roulette-wheel-1.mp3"></audio>
 
 <div id="signature">
 Made Oleg Datsyuk with Chat GPT and Gemini
@@ -106,21 +103,22 @@ var socket;
 function connect() {
     socket = new WebSocket("wss://online-site-yyx6.onrender.com");
 
-    socket.onopen = function() {
-        document.getElementById('result').innerText = 'Підключено ✅';
-    };
-
     socket.onmessage = function(event) {
-        showResult(parseInt(event.data));
+        var data = JSON.parse(event.data);
+
+        if (data.type === 'timer') {
+            document.getElementById('result').innerText =
+                'Наступний спін через: ' + data.value + ' сек';
+        }
+
+        if (data.type === 'result') {
+            showResult(data.value);
+        }
     };
 
     socket.onclose = function() {
         document.getElementById('result').innerText = 'Перепідключення...';
         setTimeout(connect, 2000);
-    };
-
-    socket.onerror = function() {
-        socket.close();
     };
 }
 
@@ -131,8 +129,7 @@ var balance = localStorage.getItem('balance')
     : 10000;
 
 var selectedBets = [];
-var currentBet = 0;
-var timer = 20;
+var currentBet = 10;
 
 function getColor(n) {
     if (n === 0) return 'green';
@@ -179,45 +176,22 @@ function createSpecial() {
 
 function pick(value, el) {
     selectedBets = [value];
+
     document.querySelectorAll('.bet').forEach(e => e.classList.remove('bet'));
+
     el.classList.add('bet');
+
     document.getElementById('selected').innerText = value;
-}
-
-function addHistory(result, win) {
-    var li = document.createElement('li');
-    li.innerText = 'Випало: ' + result + ' | ' + (win > 0 ? 'Виграш +' + win : 'Програш');
-    document.getElementById('history').prepend(li);
-}
-
-function play() {
-    if (!socket || socket.readyState !== 1) {
-        document.getElementById('result').innerText = 'Немає зʼєднання...';
-        return;
-    }
-
-    if (selectedBets.length === 0) {
-        selectedBets = [Math.floor(Math.random() * 36) + 1];
-        document.getElementById('selected').innerText = selectedBets[0];
-    }
 
     var betInput = document.getElementById('bet');
-    if (!betInput.value) betInput.value = 10;
-
-    var bet = parseInt(betInput.value);
-    if (!bet || bet <= 0 || bet > balance) return;
-
-    currentBet = bet;
-
-    document.getElementById('spinSound').play();
-    document.getElementById('result').innerText = 'Крутиться...';
-
-    socket.send('spin');
+    if (betInput.value) currentBet = parseInt(betInput.value);
 }
 
 function showResult(result) {
     var win = 0;
     var b = selectedBets[0];
+
+    if (!b) return;
 
     if (typeof b === 'number' && b === result) win += currentBet * 35;
     if (b === 'RED' && result % 2 === 1 && result !== 0) win += currentBet * 2;
@@ -242,29 +216,18 @@ function showResult(result) {
     localStorage.setItem('balance', balance);
 
     document.getElementById('balance').innerText = balance;
-    document.getElementById('result').innerText =
-        'Випало: ' + result + (win ? ' Виграш' : ' Програш');
 
     addHistory(result, win);
 }
 
-function startAutoSpin() {
-    setInterval(function() {
-        timer--;
-
-        document.getElementById('result').innerText =
-            'Наступний спін через: ' + timer + ' сек';
-
-        if (timer <= 0) {
-            play();
-            timer = 20;
-        }
-    }, 1000);
+function addHistory(result, win) {
+    var li = document.createElement('li');
+    li.innerText = 'Випало: ' + result + ' | ' + (win > 0 ? 'Виграш +' + win : 'Програш');
+    document.getElementById('history').prepend(li);
 }
 
 document.getElementById('balance').innerText = balance;
 createBoard();
-setTimeout(startAutoSpin, 2000);
 </script>
 
 </body>
