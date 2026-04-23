@@ -88,7 +88,7 @@ h1 {
 <h1>Рулетка 888 ONLINE</h1>
 
 <p>Баланс: <span id="balance"></span></p>
-<p>Ставки: <span id="selected"></span></p>
+<p>Ставка: <span id="selected"></span></p>
 
 <input type="number" id="bet" placeholder="Сума">
 <br><br>
@@ -172,17 +172,13 @@ function createSpecial() {
 }
 
 function pick(value, el) {
-    if (selectedBets.length >= 3 && !selectedBets.includes(value)) return;
+    selectedBets = [value];
 
-    if (selectedBets.includes(value)) {
-        selectedBets = selectedBets.filter(v => v !== value);
-        el.classList.remove('bet');
-    } else {
-        selectedBets.push(value);
-        el.classList.add('bet');
-    }
+    document.querySelectorAll('.bet').forEach(e => e.classList.remove('bet'));
 
-    document.getElementById('selected').innerText = selectedBets.join(', ');
+    el.classList.add('bet');
+
+    document.getElementById('selected').innerText = value;
 }
 
 function addHistory(result, win) {
@@ -199,7 +195,7 @@ function play() {
 
     if (selectedBets.length === 0) {
         selectedBets = [Math.floor(Math.random() * 36) + 1];
-        document.getElementById('selected').innerText = selectedBets.join(', ');
+        document.getElementById('selected').innerText = selectedBets[0];
     }
 
     var betInput = document.getElementById('bet');
@@ -219,20 +215,19 @@ function play() {
 function showResult(result) {
     var win = 0;
 
-    selectedBets.forEach(function(b){
-        if (typeof b === 'number' && b === result) win += currentBet * 35;
+    var b = selectedBets[0];
 
-        if (b === 'RED' && result % 2 === 1 && result !== 0) win += currentBet * 2;
-        if (b === 'BLACK' && result % 2 === 0 && result !== 0) win += currentBet * 2;
-        if (b === 'EVEN' && result % 2 === 0 && result !== 0) win += currentBet * 2;
-        if (b === 'ODD' && result % 2 === 1) win += currentBet * 2;
-        if (b === '1-18' && result >= 1 && result <= 18) win += currentBet * 2;
-        if (b === '19-36' && result >= 19) win += currentBet * 2;
+    if (typeof b === 'number' && b === result) win += currentBet * 35;
+    if (b === 'RED' && result % 2 === 1 && result !== 0) win += currentBet * 2;
+    if (b === 'BLACK' && result % 2 === 0 && result !== 0) win += currentBet * 2;
+    if (b === 'EVEN' && result % 2 === 0 && result !== 0) win += currentBet * 2;
+    if (b === 'ODD' && result % 2 === 1) win += currentBet * 2;
+    if (b === '1-18' && result >= 1 && result <= 18) win += currentBet * 2;
+    if (b === '19-36' && result >= 19) win += currentBet * 2;
 
-        if (b === '1st12' && result <= 12) win += currentBet * 3;
-        if (b === '2nd12' && result >= 13 && result <= 24) win += currentBet * 3;
-        if (b === '3rd12' && result >= 25) win += currentBet * 3;
-    });
+    if (b === '1st12' && result <= 12) win += currentBet * 3;
+    if (b === '2nd12' && result >= 13 && result <= 24) win += currentBet * 3;
+    if (b === '3rd12' && result >= 25) win += currentBet * 3;
 
     if (win > 0) {
         balance += win - currentBet;
@@ -267,7 +262,6 @@ function startAutoSpin() {
 
 document.getElementById('balance').innerText = balance;
 createBoard();
-
 setTimeout(startAutoSpin, 2000);
 </script>
 
