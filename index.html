@@ -110,7 +110,7 @@ Made Oleg Datsyuk with Chat GPT and Gemini
 </div>
 
 <script>
-var socket = new WebSocket("wss://online-site-yyx6.onrender.com");
+var socket = new WebSocket("wss:https://ODatsyuk.github.io/online.site/");
 
 var balance = localStorage.getItem('balance') 
     ? parseInt(localStorage.getItem('balance')) 
@@ -118,6 +118,7 @@ var balance = localStorage.getItem('balance')
 
 var selectedBets = [];
 var currentBet = 0;
+var timer = 20;
 
 socket.onmessage = function(event) {
     showResult(parseInt(event.data));
@@ -187,17 +188,20 @@ function addHistory(result, win) {
 }
 
 function play() {
-    var bet = parseInt(document.getElementById('bet').value);
-
-    if (!bet || bet <= 0 || bet > balance || selectedBets.length === 0) {
-        document.getElementById('result').innerText = 'Помилка';
-        return;
+    if (selectedBets.length === 0) {
+        selectedBets = [Math.floor(Math.random() * 36) + 1];
+        document.getElementById('selected').innerText = selectedBets.join(', ');
     }
+
+    var betInput = document.getElementById('bet');
+    if (!betInput.value) betInput.value = 10;
+
+    var bet = parseInt(betInput.value);
+    if (!bet || bet <= 0 || bet > balance) return;
 
     currentBet = bet;
 
     document.getElementById('spinSound').play();
-
     document.getElementById('result').innerText = 'Очікування результату...';
 
     socket.send('spin');
@@ -238,10 +242,24 @@ function showResult(result) {
     addHistory(result, win);
 }
 
+function startAutoSpin() {
+    setInterval(function() {
+        timer--;
+
+        document.getElementById('result').innerText =
+            'Наступний спін через: ' + timer + ' сек';
+
+        if (timer <= 0) {
+            play();
+            timer = 20;
+        }
+    }, 1000);
+}
+
 document.getElementById('balance').innerText = balance;
 createBoard();
+startAutoSpin();
 </script>
 
 </body>
 </html>
-
