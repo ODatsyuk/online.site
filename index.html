@@ -100,6 +100,15 @@ Made Oleg Datsyuk with Chat GPT and Gemini
 <script>
 var socket;
 
+var balance = localStorage.getItem('balance') 
+    ? parseInt(localStorage.getItem('balance')) 
+    : 10000;
+
+var selectedBets = [];
+var currentBet = 10;
+
+document.getElementById('balance').innerText = balance;
+
 function connect() {
     socket = new WebSocket("wss://online-site-yyx6.onrender.com");
 
@@ -123,13 +132,6 @@ function connect() {
 }
 
 connect();
-
-var balance = localStorage.getItem('balance') 
-    ? parseInt(localStorage.getItem('balance')) 
-    : 10000;
-
-var selectedBets = [];
-var currentBet = 10;
 
 function getColor(n) {
     if (n === 0) return 'green';
@@ -184,14 +186,18 @@ function pick(value, el) {
     document.getElementById('selected').innerText = value;
 
     var betInput = document.getElementById('bet');
-    if (betInput.value) currentBet = parseInt(betInput.value);
+    var val = parseInt(betInput.value);
+
+    if (!isNaN(val) && val > 0) {
+        currentBet = val;
+    }
 }
 
 function showResult(result) {
     var win = 0;
     var b = selectedBets[0];
 
-    if (!b) return;
+    if (!b || isNaN(currentBet)) return;
 
     if (typeof b === 'number' && b === result) win += currentBet * 35;
     if (b === 'RED' && result % 2 === 1 && result !== 0) win += currentBet * 2;
@@ -214,7 +220,6 @@ function showResult(result) {
     }
 
     localStorage.setItem('balance', balance);
-
     document.getElementById('balance').innerText = balance;
 
     addHistory(result, win);
@@ -226,7 +231,6 @@ function addHistory(result, win) {
     document.getElementById('history').prepend(li);
 }
 
-document.getElementById('balance').innerText = balance;
 createBoard();
 </script>
 
