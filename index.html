@@ -6,9 +6,7 @@
 
 <style>
 body {
-    background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
-    url('https://tourdnepr.com/images/stories/news_2025/november/03_ruletka_02.jpg');
-    background-size: cover;
+    background: black;
     color: white;
     display: flex;
     font-family: Arial;
@@ -40,12 +38,24 @@ body {
 
 .bet { outline: 3px solid yellow; }
 
+.special {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+}
+
+.special .cell {
+    width: 90px;
+    height: 40px;
+}
+
 #chat {
     height: 200px;
     overflow-y: auto;
     border: 1px solid white;
     padding: 5px;
-    margin-top: 10px;
 }
 </style>
 </head>
@@ -72,6 +82,7 @@ body {
 <br><br>
 
 <div id="board" class="board"></div>
+<div id="special" class="special"></div>
 
 <p id="result">Підключення...</p>
 </div>
@@ -91,6 +102,10 @@ document.getElementById('balance').innerText = balance;
 function connect() {
     socket = new WebSocket("ws://localhost:3000");
 
+    socket.onopen = () => {
+        document.getElementById('result').innerText = "Підключено";
+    };
+
     socket.onmessage = function(event) {
         var data = JSON.parse(event.data);
 
@@ -109,6 +124,7 @@ function connect() {
     };
 
     socket.onclose = function() {
+        document.getElementById('result').innerText = "Перепідключення...";
         setTimeout(connect, 2000);
     };
 }
@@ -155,6 +171,26 @@ function createBoard() {
 
         board.appendChild(cell);
     }
+
+    createSpecial();
+}
+
+function createSpecial() {
+    var special = document.getElementById('special');
+
+    var zones = ['1-18','EVEN','RED','BLACK','ODD','19-36','1st12','2nd12','3rd12'];
+
+    zones.forEach(function(z){
+        var el = document.createElement('div');
+        el.className = 'cell';
+        el.innerText = z;
+
+        el.onclick = function(){
+            pick(z, el);
+        };
+
+        special.appendChild(el);
+    });
 }
 
 function pick(value, el) {
@@ -174,7 +210,17 @@ function showResult(result) {
     var b = selectedBets[0];
     if (!b || isNaN(currentBet)) return;
 
-    if (b === result) win = currentBet * 35;
+    if (typeof b === 'number' && b === result) win += currentBet * 35;
+    if (b === 'RED' && result % 2 === 1 && result !== 0) win += currentBet * 2;
+    if (b === 'BLACK' && result % 2 === 0 && result !== 0) win += currentBet * 2;
+    if (b === 'EVEN' && result % 2 === 0 && result !== 0) win += currentBet * 2;
+    if (b === 'ODD' && result % 2 === 1) win += currentBet * 2;
+    if (b === '1-18' && result >= 1 && result <= 18) win += currentBet * 2;
+    if (b === '19-36' && result >= 19) win += currentBet * 2;
+
+    if (b === '1st12' && result <= 12) win += currentBet * 3;
+    if (b === '2nd12' && result >= 13 && result <= 24) win += currentBet * 3;
+    if (b === '3rd12' && result >= 25) win += currentBet * 3;
 
     if (win > 0) balance += win - currentBet;
     else balance -= currentBet;
@@ -183,7 +229,7 @@ function showResult(result) {
     document.getElementById('balance').innerText = balance;
 
     var li = document.createElement('li');
-    li.innerText = 'Випало: ' + result;
+    li.innerText = 'Випало: ' + result + (win > 0 ? ' | Виграш +' + win : ' | Програш');
     document.getElementById('history').prepend(li);
 }
 
