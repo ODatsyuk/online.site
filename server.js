@@ -1,6 +1,11 @@
 const WebSocket = require('ws');
+const http = require('http');
 
-const wss = new WebSocket.Server({ port: 3000 });
+// Render дає порт через env
+const PORT = process.env.PORT || 3000;
+
+const server = http.createServer();
+const wss = new WebSocket.Server({ server });
 
 let timer = 20;
 
@@ -12,13 +17,14 @@ function broadcast(data) {
     });
 }
 
+// таймер
 setInterval(() => {
     timer--;
 
     broadcast({ type: 'timer', value: timer });
 
     if (timer <= 0) {
-        let result = Math.floor(Math.random() * 37);
+        const result = Math.floor(Math.random() * 37);
 
         broadcast({ type: 'result', value: result });
 
@@ -27,6 +33,7 @@ setInterval(() => {
 
 }, 1000);
 
+// чат
 wss.on('connection', ws => {
     ws.on('message', message => {
         let data;
@@ -46,4 +53,6 @@ wss.on('connection', ws => {
     });
 });
 
-console.log("Сервер працює: ws://localhost:3000");
+server.listen(PORT, () => {
+    console.log("Server running on port " + PORT);
+});
