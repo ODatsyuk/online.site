@@ -12,32 +12,23 @@ function broadcast(data) {
     });
 }
 
-// таймер (кожну секунду)
 setInterval(() => {
     timer--;
 
-    broadcast({
-        type: 'timer',
-        value: timer
-    });
+    broadcast({ type: 'timer', value: timer });
 
     if (timer <= 0) {
         let result = Math.floor(Math.random() * 37);
 
-        broadcast({
-            type: 'result',
-            value: result
-        });
+        broadcast({ type: 'result', value: result });
 
         timer = 20;
     }
 
 }, 1000);
 
-// підключення
-wss.on('connection', (ws) => {
-
-    ws.on('message', (message) => {
+wss.on('connection', ws => {
+    ws.on('message', message => {
         let data;
 
         try {
@@ -53,7 +44,6 @@ wss.on('connection', (ws) => {
             });
         }
     });
-
 });
 
-console.log("✅ Сервер запущений на ws://localhost:3000");
+console.log("Сервер працює: ws://localhost:3000");
