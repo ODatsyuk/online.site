@@ -6,7 +6,11 @@
 
 <style>
 body {
-    background: black;
+    background: 
+        linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+        url('https://tourdnepr.com/images/stories/news_2025/november/03_ruletka_02.jpg');
+    background-size: cover;
+    background-position: center;
     color: white;
     display: flex;
     font-family: Arial;
@@ -88,7 +92,9 @@ body {
 </div>
 
 <script>
-var socket;
+
+// 🔥 ВСТАВ СВІЙ URL З RENDER
+const socket = new WebSocket("wss://your-app-name.onrender.com");
 
 var balance = localStorage.getItem('balance') 
     ? parseInt(localStorage.getItem('balance')) 
@@ -99,37 +105,30 @@ var currentBet = 10;
 
 document.getElementById('balance').innerText = balance;
 
-function connect() {
-    socket = new WebSocket("ws://localhost:3000");
+socket.onopen = () => {
+    document.getElementById('result').innerText = "Підключено";
+};
 
-    socket.onopen = () => {
-        document.getElementById('result').innerText = "Підключено";
-    };
+socket.onmessage = function(event) {
+    var data = JSON.parse(event.data);
 
-    socket.onmessage = function(event) {
-        var data = JSON.parse(event.data);
+    if (data.type === 'timer') {
+        document.getElementById('result').innerText =
+            'Спін через: ' + data.value + ' сек';
+    }
 
-        if (data.type === 'timer') {
-            document.getElementById('result').innerText =
-                'Спін через: ' + data.value + ' сек';
-        }
+    if (data.type === 'result') {
+        showResult(data.value);
+    }
 
-        if (data.type === 'result') {
-            showResult(data.value);
-        }
+    if (data.type === 'chat') {
+        addMessage(data.message);
+    }
+};
 
-        if (data.type === 'chat') {
-            addMessage(data.message);
-        }
-    };
-
-    socket.onclose = function() {
-        document.getElementById('result').innerText = "Перепідключення...";
-        setTimeout(connect, 2000);
-    };
-}
-
-connect();
+socket.onclose = function() {
+    document.getElementById('result').innerText = "Втрачено з'єднання";
+};
 
 function sendMessage() {
     var input = document.getElementById('chatInput');
