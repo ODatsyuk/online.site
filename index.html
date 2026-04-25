@@ -1,44 +1,194 @@
-const WebSocket = require('ws');
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Рулетка 888 ONLINE</title>
 
-const wss = new WebSocket.Server({ port: 3000 });
-
-let timer = 20;
-
-function broadcast(data) {
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(data));
-        }
-    });
+<style>
+body {
+    background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+    url('https://tourdnepr.com/images/stories/news_2025/november/03_ruletka_02.jpg');
+    background-size: cover;
+    color: white;
+    display: flex;
+    font-family: Arial;
 }
 
-// таймер
-setInterval(() => {
-    timer--;
+#left { width: 30%; padding: 10px; }
+#right { width: 70%; text-align: center; }
 
-    broadcast({ type: 'timer', value: timer });
+.board {
+    display: grid;
+    grid-template-columns: repeat(12, 60px);
+    gap: 2px;
+    justify-content: center;
+}
 
-    if (timer <= 0) {
-        let result = Math.floor(Math.random() * 37);
+.cell {
+    width: 60px;
+    height: 60px;
+    border: 1px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
 
-        broadcast({ type: 'result', value: result });
+.red { background: red; }
+.black { background: black; }
+.green { background: green; }
 
-        timer = 20;
-    }
+.bet { outline: 3px solid yellow; }
 
-}, 1000);
+#chat {
+    height: 200px;
+    overflow-y: auto;
+    border: 1px solid white;
+    padding: 5px;
+    margin-top: 10px;
+}
+</style>
+</head>
 
-wss.on('connection', ws => {
+<body>
 
-    ws.on('message', message => {
-        let data = JSON.parse(message);
+<div id="left">
+<h2>Історія</h2>
+<ul id="history"></ul>
+
+<h2>Чат</h2>
+<div id="chat"></div>
+<input id="chatInput" placeholder="Написати...">
+<button onclick="sendMessage()">➤</button>
+</div>
+
+<div id="right">
+<h1>Рулетка 888 ONLINE</h1>
+
+<p>Баланс: <span id="balance"></span></p>
+<p>Ставка: <span id="selected"></span></p>
+
+<input type="number" id="bet" placeholder="Сума">
+<br><br>
+
+<div id="board" class="board"></div>
+
+<p id="result">Підключення...</p>
+</div>
+
+<script>
+var socket;
+
+var balance = localStorage.getItem('balance') 
+    ? parseInt(localStorage.getItem('balance')) 
+    : 10000;
+
+var selectedBets = [];
+var currentBet = 10;
+
+document.getElementById('balance').innerText = balance;
+
+function connect() {
+    socket = new WebSocket("ws://localhost:3000");
+
+    socket.onmessage = function(event) {
+        var data = JSON.parse(event.data);
+
+        if (data.type === 'timer') {
+            document.getElementById('result').innerText =
+                'Спін через: ' + data.value + ' сек';
+        }
+
+        if (data.type === 'result') {
+            showResult(data.value);
+        }
 
         if (data.type === 'chat') {
-            broadcast({
-                type: 'chat',
-                message: data.message
-            });
+            addMessage(data.message);
         }
-    });
+    };
 
-});
+    socket.onclose = function() {
+        setTimeout(connect, 2000);
+    };
+}
+
+connect();
+
+function sendMessage() {
+    var input = document.getElementById('chatInput');
+    var text = input.value.trim();
+    if (!text) return;
+
+    socket.send(JSON.stringify({
+        type: 'chat',
+        message: text
+    }));
+
+    input.value = '';
+}
+
+function addMessage(msg) {
+    var chat = document.getElementById('chat');
+    var div = document.createElement('div');
+    div.innerText = msg;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+function getColor(n) {
+    if (n === 0) return 'green';
+    return n % 2 === 1 ? 'red' : 'black';
+}
+
+function createBoard() {
+    var board = document.getElementById('board');
+
+    for (var i = 0; i <= 36; i++) {
+        var cell = document.createElement('div');
+        cell.className = 'cell ' + getColor(i);
+        cell.innerText = i;
+
+        cell.onclick = (function(n, el){
+            return function() { pick(n, el); }
+        })(i, cell);
+
+        board.appendChild(cell);
+    }
+}
+
+function pick(value, el) {
+    selectedBets = [value];
+
+    document.querySelectorAll('.bet').forEach(e => e.classList.remove('bet'));
+    el.classList.add('bet');
+
+    document.getElementById('selected').innerText = value;
+
+    var val = parseInt(document.getElementById('bet').value);
+    if (!isNaN(val) && val > 0) currentBet = val;
+}
+
+function showResult(result) {
+    var win = 0;
+    var b = selectedBets[0];
+    if (!b || isNaN(currentBet)) return;
+
+    if (b === result) win = currentBet * 35;
+
+    if (win > 0) balance += win - currentBet;
+    else balance -= currentBet;
+
+    localStorage.setItem('balance', balance);
+    document.getElementById('balance').innerText = balance;
+
+    var li = document.createElement('li');
+    li.innerText = 'Випало: ' + result;
+    document.getElementById('history').prepend(li);
+}
+
+createBoard();
+</script>
+
+</body>
+</html>
