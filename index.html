@@ -6,11 +6,9 @@
 
 <style>
 body {
-    background: 
-        linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
-        url('https://tourdnepr.com/images/stories/news_2025/november/03_ruletka_02.jpg');
+    background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+    url('https://tourdnepr.com/images/stories/news_2025/november/03_ruletka_02.jpg');
     background-size: cover;
-    background-position: center;
     color: white;
     display: flex;
     font-family: Arial;
@@ -18,11 +16,6 @@ body {
 
 #left { width: 30%; padding: 10px; }
 #right { width: 70%; text-align: center; }
-
-h1 {
-    color: gold;
-    text-shadow: 0 0 10px gold, 0 0 20px orange;
-}
 
 .board {
     display: grid;
@@ -47,33 +40,26 @@ h1 {
 
 .bet { outline: 3px solid yellow; }
 
-.special {
+#chat {
+    height: 200px;
+    overflow-y: auto;
+    border: 1px solid white;
+    padding: 5px;
     margin-top: 10px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 5px;
-}
-
-.special .cell {
-    width: 90px;
-    height: 40px;
-}
-
-#signature {
-    position: fixed;
-    bottom: 10px;
-    right: 10px;
-    font-size: 12px;
 }
 </style>
-
 </head>
+
 <body>
 
 <div id="left">
 <h2>Історія</h2>
 <ul id="history"></ul>
+
+<h2>Чат</h2>
+<div id="chat"></div>
+<input id="chatInput" placeholder="Написати...">
+<button onclick="sendMessage()">➤</button>
 </div>
 
 <div id="right">
@@ -86,15 +72,8 @@ h1 {
 <br><br>
 
 <div id="board" class="board"></div>
-<div class="special" id="special"></div>
-
-<br>
 
 <p id="result">Підключення...</p>
-</div>
-
-<div id="signature">
-Made Oleg Datsyuk with Chat GPT and Gemini
 </div>
 
 <script>
@@ -110,28 +89,52 @@ var currentBet = 10;
 document.getElementById('balance').innerText = balance;
 
 function connect() {
-    socket = new WebSocket("wss://online-site-yyx6.onrender.com");
+    socket = new WebSocket("ws://localhost:3000");
 
     socket.onmessage = function(event) {
         var data = JSON.parse(event.data);
 
         if (data.type === 'timer') {
             document.getElementById('result').innerText =
-                'Наступний спін через: ' + data.value + ' сек';
+                'Спін через: ' + data.value + ' сек';
         }
 
         if (data.type === 'result') {
             showResult(data.value);
         }
+
+        if (data.type === 'chat') {
+            addMessage(data.message);
+        }
     };
 
     socket.onclose = function() {
-        document.getElementById('result').innerText = 'Перепідключення...';
         setTimeout(connect, 2000);
     };
 }
 
 connect();
+
+function sendMessage() {
+    var input = document.getElementById('chatInput');
+    var text = input.value.trim();
+    if (!text) return;
+
+    socket.send(JSON.stringify({
+        type: 'chat',
+        message: text
+    }));
+
+    input.value = '';
+}
+
+function addMessage(msg) {
+    var chat = document.getElementById('chat');
+    var div = document.createElement('div');
+    div.innerText = msg;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+}
 
 function getColor(n) {
     if (n === 0) return 'green';
@@ -141,13 +144,7 @@ function getColor(n) {
 function createBoard() {
     var board = document.getElementById('board');
 
-    var zero = document.createElement('div');
-    zero.className = 'cell green';
-    zero.innerText = '0';
-    zero.onclick = function () { pick(0, zero); };
-    board.parentNode.insertBefore(zero, board);
-
-    for (var i = 1; i <= 36; i++) {
+    for (var i = 0; i <= 36; i++) {
         var cell = document.createElement('div');
         cell.className = 'cell ' + getColor(i);
         cell.innerText = i;
@@ -158,76 +155,35 @@ function createBoard() {
 
         board.appendChild(cell);
     }
-
-    createSpecial();
-}
-
-function createSpecial() {
-    var special = document.getElementById('special');
-
-    var zones = ['1-18','EVEN','RED','BLACK','ODD','19-36','1st12','2nd12','3rd12'];
-
-    zones.forEach(function(z){
-        var el = document.createElement('div');
-        el.className = 'cell';
-        el.innerText = z;
-        el.onclick = function(){ pick(z, el); };
-        special.appendChild(el);
-    });
 }
 
 function pick(value, el) {
     selectedBets = [value];
 
     document.querySelectorAll('.bet').forEach(e => e.classList.remove('bet'));
-
     el.classList.add('bet');
 
     document.getElementById('selected').innerText = value;
 
-    var betInput = document.getElementById('bet');
-    var val = parseInt(betInput.value);
-
-    if (!isNaN(val) && val > 0) {
-        currentBet = val;
-    }
+    var val = parseInt(document.getElementById('bet').value);
+    if (!isNaN(val) && val > 0) currentBet = val;
 }
 
 function showResult(result) {
     var win = 0;
     var b = selectedBets[0];
-
     if (!b || isNaN(currentBet)) return;
 
-    if (typeof b === 'number' && b === result) win += currentBet * 35;
-    if (b === 'RED' && result % 2 === 1 && result !== 0) win += currentBet * 2;
-    if (b === 'BLACK' && result % 2 === 0 && result !== 0) win += currentBet * 2;
-    if (b === 'EVEN' && result % 2 === 0 && result !== 0) win += currentBet * 2;
-    if (b === 'ODD' && result % 2 === 1) win += currentBet * 2;
-    if (b === '1-18' && result >= 1 && result <= 18) win += currentBet * 2;
-    if (b === '19-36' && result >= 19) win += currentBet * 2;
+    if (b === result) win = currentBet * 35;
 
-    if (b === '1st12' && result <= 12) win += currentBet * 3;
-    if (b === '2nd12' && result >= 13 && result <= 24) win += currentBet * 3;
-    if (b === '3rd12' && result >= 25) win += currentBet * 3;
-
-    if (win > 0) {
-        balance += win - currentBet;
-        document.body.style.boxShadow = '0 0 50px green';
-    } else {
-        balance -= currentBet;
-        document.body.style.boxShadow = '0 0 50px red';
-    }
+    if (win > 0) balance += win - currentBet;
+    else balance -= currentBet;
 
     localStorage.setItem('balance', balance);
     document.getElementById('balance').innerText = balance;
 
-    addHistory(result, win);
-}
-
-function addHistory(result, win) {
     var li = document.createElement('li');
-    li.innerText = 'Випало: ' + result + ' | ' + (win > 0 ? 'Виграш +' + win : 'Програш');
+    li.innerText = 'Випало: ' + result;
     document.getElementById('history').prepend(li);
 }
 
