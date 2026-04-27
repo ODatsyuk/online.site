@@ -1,6 +1,14 @@
+const http = require('http');
 const WebSocket = require('ws');
 
-const wss = new WebSocket.Server({ port: process.env.PORT || 8080 });
+const port = process.env.PORT || 10000;
+
+const server = http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end("Server працює");
+});
+
+const wss = new WebSocket.Server({ server });
 
 let timer = 20;
 
@@ -30,5 +38,27 @@ setInterval(() => {
 }, 1000);
 
 wss.on('connection', ws => {
+
     ws.send(JSON.stringify({ type: 'timer', value: timer }));
+
+    ws.on('message', message => {
+        try {
+            const data = JSON.parse(message);
+
+            if (data.type === 'chat') {
+                broadcast({
+                    type: 'chat',
+                    text: data.text
+                });
+            }
+
+        } catch(e) {}
+    });
+
 });
+
+server.listen(port, () => {
+    console.log("Server запущено");
+});
+
+process.on('uncaughtException', console.error);
