@@ -94,7 +94,7 @@ h1 {
 var socket;
 
 function connect() {
-    socket = new WebSocket("wss:https://online-site-yyx6.onrender.com");
+    socket = new WebSocket("wss://online-site-yyx6.onrender.com");
 
     socket.onopen = function() {
         document.getElementById('result').innerText = 'Підключено';
