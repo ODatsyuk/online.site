@@ -93,6 +93,13 @@ h1 {
 </div>
 
 <script>
+var nickname = localStorage.getItem('nickname');
+
+if (!nickname) {
+    nickname = prompt("Введи нікнейм:");
+    localStorage.setItem('nickname', nickname);
+}
+
 var socket;
 
 function connect() {
@@ -116,7 +123,7 @@ function connect() {
 
         if (data.type === 'chat') {
             var div = document.createElement('div');
-            div.innerText = data.text;
+            div.innerText = data.name + ': ' + data.text;
             document.getElementById('chat').appendChild(div);
         }
     };
@@ -221,6 +228,7 @@ function sendMessage() {
 
     socket.send(JSON.stringify({
         type: 'chat',
+        name: nickname,
         text: text
     }));
 
