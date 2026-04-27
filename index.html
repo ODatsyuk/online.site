@@ -19,6 +19,11 @@ body {
 #left { width: 30%; padding: 10px; }
 #right { width: 70%; text-align: center; }
 
+h1 {
+    color: gold;
+    text-shadow: 0 0 10px gold, 0 0 20px orange;
+}
+
 .board {
     display: grid;
     grid-template-columns: repeat(12, 60px);
@@ -54,26 +59,14 @@ body {
     width: 90px;
     height: 40px;
 }
-
-#chat {
-    height: 200px;
-    overflow-y: auto;
-    border: 1px solid white;
-    padding: 5px;
-}
 </style>
-</head>
 
+</head>
 <body>
 
 <div id="left">
 <h2>Історія</h2>
 <ul id="history"></ul>
-
-<h2>Чат</h2>
-<div id="chat"></div>
-<input id="chatInput" placeholder="Написати...">
-<button onclick="sendMessage()">➤</button>
 </div>
 
 <div id="right">
@@ -86,15 +79,41 @@ body {
 <br><br>
 
 <div id="board" class="board"></div>
-<div id="special" class="special"></div>
+<div class="special" id="special"></div>
 
 <p id="result">Підключення...</p>
 </div>
 
 <script>
+var socket;
 
-// 🔥 ВСТАВ СВІЙ URL З RENDER
-const socket = new WebSocket("wss:https://online-site-yyx6.onrender.com");
+function connect() {
+    socket = new WebSocket("wss://ТУТ-ТВІЙ-СЕРВЕР.onrender.com");
+
+    socket.onopen = function() {
+        document.getElementById('result').innerText = 'Підключено';
+    };
+
+    socket.onmessage = function(event) {
+        var data = JSON.parse(event.data);
+
+        if (data.type === 'timer') {
+            document.getElementById('result').innerText =
+                'Наступний спін через: ' + data.value + ' сек';
+        }
+
+        if (data.type === 'result') {
+            showResult(data.value);
+        }
+    };
+
+    socket.onclose = function() {
+        document.getElementById('result').innerText = 'Втрачено зʼєднання...';
+        setTimeout(connect, 2000);
+    };
+}
+
+connect();
 
 var balance = localStorage.getItem('balance') 
     ? parseInt(localStorage.getItem('balance')) 
@@ -102,54 +121,6 @@ var balance = localStorage.getItem('balance')
 
 var selectedBets = [];
 var currentBet = 10;
-
-document.getElementById('balance').innerText = balance;
-
-socket.onopen = () => {
-    document.getElementById('result').innerText = "Підключено";
-};
-
-socket.onmessage = function(event) {
-    var data = JSON.parse(event.data);
-
-    if (data.type === 'timer') {
-        document.getElementById('result').innerText =
-            'Спін через: ' + data.value + ' сек';
-    }
-
-    if (data.type === 'result') {
-        showResult(data.value);
-    }
-
-    if (data.type === 'chat') {
-        addMessage(data.message);
-    }
-};
-
-socket.onclose = function() {
-    document.getElementById('result').innerText = "Втрачено з'єднання";
-};
-
-function sendMessage() {
-    var input = document.getElementById('chatInput');
-    var text = input.value.trim();
-    if (!text) return;
-
-    socket.send(JSON.stringify({
-        type: 'chat',
-        message: text
-    }));
-
-    input.value = '';
-}
-
-function addMessage(msg) {
-    var chat = document.getElementById('chat');
-    var div = document.createElement('div');
-    div.innerText = msg;
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
-}
 
 function getColor(n) {
     if (n === 0) return 'green';
@@ -159,7 +130,13 @@ function getColor(n) {
 function createBoard() {
     var board = document.getElementById('board');
 
-    for (var i = 0; i <= 36; i++) {
+    var zero = document.createElement('div');
+    zero.className = 'cell green';
+    zero.innerText = '0';
+    zero.onclick = function () { pick(0, zero); };
+    board.parentNode.insertBefore(zero, board);
+
+    for (var i = 1; i <= 36; i++) {
         var cell = document.createElement('div');
         cell.className = 'cell ' + getColor(i);
         cell.innerText = i;
@@ -183,55 +160,48 @@ function createSpecial() {
         var el = document.createElement('div');
         el.className = 'cell';
         el.innerText = z;
-
-        el.onclick = function(){
-            pick(z, el);
-        };
-
+        el.onclick = function(){ pick(z, el); };
         special.appendChild(el);
     });
 }
 
 function pick(value, el) {
     selectedBets = [value];
-
     document.querySelectorAll('.bet').forEach(e => e.classList.remove('bet'));
     el.classList.add('bet');
-
     document.getElementById('selected').innerText = value;
 
-    var val = parseInt(document.getElementById('bet').value);
-    if (!isNaN(val) && val > 0) currentBet = val;
+    var betInput = document.getElementById('bet');
+    if (betInput.value) currentBet = parseInt(betInput.value);
 }
 
 function showResult(result) {
     var win = 0;
     var b = selectedBets[0];
-    if (!b || isNaN(currentBet)) return;
+
+    if (!b) return;
 
     if (typeof b === 'number' && b === result) win += currentBet * 35;
     if (b === 'RED' && result % 2 === 1 && result !== 0) win += currentBet * 2;
     if (b === 'BLACK' && result % 2 === 0 && result !== 0) win += currentBet * 2;
     if (b === 'EVEN' && result % 2 === 0 && result !== 0) win += currentBet * 2;
     if (b === 'ODD' && result % 2 === 1) win += currentBet * 2;
-    if (b === '1-18' && result >= 1 && result <= 18) win += currentBet * 2;
-    if (b === '19-36' && result >= 19) win += currentBet * 2;
 
-    if (b === '1st12' && result <= 12) win += currentBet * 3;
-    if (b === '2nd12' && result >= 13 && result <= 24) win += currentBet * 3;
-    if (b === '3rd12' && result >= 25) win += currentBet * 3;
-
-    if (win > 0) balance += win - currentBet;
-    else balance -= currentBet;
+    if (win > 0) {
+        balance += win - currentBet;
+    } else {
+        balance -= currentBet;
+    }
 
     localStorage.setItem('balance', balance);
     document.getElementById('balance').innerText = balance;
 
     var li = document.createElement('li');
-    li.innerText = 'Випало: ' + result + (win > 0 ? ' | Виграш +' + win : ' | Програш');
+    li.innerText = 'Випало: ' + result;
     document.getElementById('history').prepend(li);
 }
 
+document.getElementById('balance').innerText = balance;
 createBoard();
 </script>
 
