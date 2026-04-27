@@ -48,6 +48,7 @@ wss.on('connection', ws => {
             if (data.type === 'chat') {
                 broadcast({
                     type: 'chat',
+                    name: data.name,
                     text: data.text
                 });
             }
