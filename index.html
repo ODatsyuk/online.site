@@ -67,6 +67,12 @@ h1 {
 <div id="left">
 <h2>Історія</h2>
 <ul id="history"></ul>
+
+<h3>Чат</h3>
+<div id="chat" style="height:200px; overflow:auto; border:1px solid white;"></div>
+
+<input type="text" id="chatInput" placeholder="Повідомлення">
+<button onclick="sendMessage()">Відправити</button>
 </div>
 
 <div id="right">
@@ -104,6 +110,12 @@ function connect() {
 
         if (data.type === 'result') {
             showResult(data.value);
+        }
+
+        if (data.type === 'chat') {
+            var div = document.createElement('div');
+            div.innerText = data.text;
+            document.getElementById('chat').appendChild(div);
         }
     };
 
@@ -184,8 +196,6 @@ function showResult(result) {
     if (typeof b === 'number' && b === result) win += currentBet * 35;
     if (b === 'RED' && result % 2 === 1 && result !== 0) win += currentBet * 2;
     if (b === 'BLACK' && result % 2 === 0 && result !== 0) win += currentBet * 2;
-    if (b === 'EVEN' && result % 2 === 0 && result !== 0) win += currentBet * 2;
-    if (b === 'ODD' && result % 2 === 1) win += currentBet * 2;
 
     if (win > 0) {
         balance += win - currentBet;
@@ -199,6 +209,20 @@ function showResult(result) {
     var li = document.createElement('li');
     li.innerText = 'Випало: ' + result;
     document.getElementById('history').prepend(li);
+}
+
+function sendMessage() {
+    var input = document.getElementById('chatInput');
+    var text = input.value;
+
+    if (!text) return;
+
+    socket.send(JSON.stringify({
+        type: 'chat',
+        text: text
+    }));
+
+    input.value = '';
 }
 
 document.getElementById('balance').innerText = balance;
